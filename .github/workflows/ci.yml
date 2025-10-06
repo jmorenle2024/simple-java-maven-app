@@ -145,6 +145,25 @@ jobs:
           distribution: 'temurin'
           java-version: '21'
 
+      - name: Create Maven settings.xml
+        run: |
+          mkdir -p ~/.m2
+          cat > ~/.m2/settings.xml <<'EOF'
+          <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
+                    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                    xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 
+                                        http://maven.apache.org/xsd/settings-1.0.0.xsd">
+            <mirrors>
+              <mirror>
+                <id>central-mirror</id>
+                <n>Maven Central Mirror</n>
+                <url>https://repo1.maven.org/maven2</url>
+                <mirrorOf>*</mirrorOf>
+              </mirror>
+            </mirrors>
+          </settings>
+          EOF
+
       - name: Restore Maven cache
         uses: actions/cache@v4
         with:
@@ -153,11 +172,64 @@ jobs:
           restore-keys: |
             maven-
 
-      - name:
+      # - name: Build and install JAR
+      #   run: |
+      #     mvn jar:jar install:install help:evaluate -Dexpression=project.name
+
+      #     NAME="mvn -q -DforceStdout help:evaluate -Dexpression=project.name"
+      #     VERSION="mvn -q -DforceStdout help:evaluate -Dexpression=project.version"
+
+      #     java -jar target/${NAME}-${VERSION}.jar
+
+      - name: Build and install JAR
         run: |
-          mvn jar:jar install:install help:evaluate -Dexpression=project.name
+          mvn -B package jar:jar install:install
 
-          NAME="mvn -q -DforceStdout help:evaluate -Dexpression=project.name"
-          VERSION="mvn -q -DforceStdout help:evaluate -Dexpression=project.version"
+      - name: Get project metadata
+        id: metadata
+        run: |
+          NAME=$(mvn -q -DforceStdout help:evaluate -Dexpression=project.name)
+          VERSION=$(mvn -q -DforceStdout help:evaluate -Dexpression=project.version)
+          ARTIFACT_ID=$(mvn -q -DforceStdout help:evaluate -Dexpression=project.artifactId)
+          
+          echo "name=$NAME" >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "artifact_id=$ARTIFACT_ID" >> $GITHUB_OUTPUT
+          echo "jar_file=target/${ARTIFACT_ID}-${VERSION}.jar" >> $GITHUB_OUTPUT
 
-          java -jar target/${NAME}-${VERSION}.jar
+      - name: Run application
+        run: |
+          JAR_FILE="${{ steps.metadata.outputs.jar_file }}"
+          
+          if [ -f "$JAR_FILE" ]; then
+            echo "Running: $JAR_FILE"
+            java -jar "$JAR_FILE"
+          else
+            echo "ERROR: JAR file not found: $JAR_FILE"
+            echo "Available files in target/:"
+            ls -la target/*.jar || echo "No JAR files found"
+            exit 1
+          fi
+
+      - name: Upload JAR artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.metadata.outputs.artifact_id }}-${{ steps.metadata.outputs.version }}
+          path: ${{ steps.metadata.outputs.jar_file }}
+          retention-days: 30
+
+      - name: Build Summary
+        if: always()
+        run: |
+          echo "## Build Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Project Name:** ${{ steps.metadata.outputs.name }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Version:** ${{ steps.metadata.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Artifact:** ${{ steps.metadata.outputs.jar_file }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### JAR Details" >> $GITHUB_STEP_SUMMARY
+          if [ -f "${{ steps.metadata.outputs.jar_file }}" ]; then
+            SIZE=$(ls -lh "${{ steps.metadata.outputs.jar_file }}" | awk '{print $5}')
+            echo "- Size: $SIZE" >> $GITHUB_STEP_SUMMARY
+            echo "- Path: \`${{ steps.metadata.outputs.jar_file }}\`" >> $GITHUB_STEP_SUMMARY
+          fi
