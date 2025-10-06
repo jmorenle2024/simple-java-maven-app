@@ -1,0 +1,120 @@
+name: "Test ci mvn"
+
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      cache-key: ${{ steps.cache-deps.outputs.cache-hit }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+    #   - name: Create Maven settings.xml
+    #     run: |
+    #       mkdir -p ~/.m2
+    #       cat > ~/.m2/settings.xml <<'EOF'
+    #       <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
+    #                 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    #                 xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 
+    #                                     http://maven.apache.org/xsd/settings-1.0.0.xsd">
+    #         <mirrors>
+    #           <mirror>
+    #             <id>central-mirror</id>
+    #             <name>Maven Central Mirror</name>
+    #             <url>https://repo1.maven.org/maven2</url>
+    #             <mirrorOf>*</mirrorOf>
+    #           </mirror>
+    #         </mirrors>
+    #         <profiles>
+    #           <profile>
+    #             <id>default-profile</id>
+    #             <activation>
+    #               <activeByDefault>true</activeByDefault>
+    #             </activation>
+    #             <repositories>
+    #               <repository>
+    #                 <id>central</id>
+    #                 <url>https://repo1.maven.org/maven2</url>
+    #                 <releases><enabled>true</enabled></releases>
+    #                 <snapshots><enabled>false</enabled></snapshots>
+    #               </repository>
+    #             </repositories>
+    #           </profile>
+    #         </profiles>
+    #       </settings>
+    #       EOF
+
+      - name: Cache Maven dependencies
+        id: cache-deps
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository
+          key: maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            maven-
+
+    #   - name: Clean old Spring/Hibernate artifacts
+    #     run: |
+    #       rm -rf ~/.m2/repository/org/springframework
+    #       rm -rf ~/.m2/repository/org/hibernate
+
+      - name: Download dependencies
+        run: |
+          # mvn clean
+          mvn -B dependency:go-offline -U
+
+  run:
+    needs: prepare
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+    #   - name: Create Maven settings.xml
+    #     run: |
+    #       mkdir -p ~/.m2
+    #       cat > ~/.m2/settings.xml <<'EOF'
+    #       <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
+    #                 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    #                 xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 
+    #                                     http://maven.apache.org/xsd/settings-1.0.0.xsd">
+    #         <mirrors>
+    #           <mirror>
+    #             <id>central-mirror</id>
+    #             <name>Maven Central Mirror</name>
+    #             <url>https://repo1.maven.org/maven2</url>
+    #             <mirrorOf>*</mirrorOf>
+    #           </mirror>
+    #         </mirrors>
+    #       </settings>
+    #       EOF
+
+      - name: Restore Maven cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository
+          key: maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            maven-
+
+      - name: Run tests
+        run: |
+          mvn test
