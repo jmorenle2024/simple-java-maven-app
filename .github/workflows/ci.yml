@@ -1,10 +1,15 @@
-name: "Test ci mvn"
+name: "Test CI Maven"
 
 on:
   push:
     branches:
       - master
   workflow_dispatch:
+    inputs:
+      use-cache:
+        description: '¿Usar caché de Maven?'
+        required: false
+        default: 'true'
 
 jobs:
   prepare:
@@ -21,6 +26,10 @@ jobs:
           distribution: 'temurin'
           java-version: '21'
 
+      - name: Get current date
+        id: date
+        run: echo "today=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+
       - name: Create Maven settings.xml
         run: |
           mkdir -p ~/.m2
@@ -32,44 +41,26 @@ jobs:
             <mirrors>
               <mirror>
                 <id>central-mirror</id>
-                <n>Maven Central Mirror</n>
+                <name>Maven Central Mirror</name>
                 <url>https://repo1.maven.org/maven2</url>
                 <mirrorOf>*</mirrorOf>
               </mirror>
             </mirrors>
-            <profiles>
-              <profile>
-                <id>default-profile</id>
-                <activation>
-                  <activeByDefault>true</activeByDefault>
-                </activation>
-                <repositories>
-                  <repository>
-                    <id>central</id>
-                    <url>https://repo1.maven.org/maven2</url>
-                    <releases><enabled>true</enabled></releases>
-                    <snapshots><enabled>false</enabled></snapshots>
-                  </repository>
-                </repositories>
-              </profile>
-            </profiles>
           </settings>
           EOF
 
       - name: Cache Maven dependencies
+        if: ${{ github.event.inputs.use-cache == 'true' }}
         id: cache-deps
         uses: actions/cache@v4
         with:
           path: ~/.m2/repository
-          key: maven-${{ hashFiles('**/pom.xml') }}
+          key: maven-${{ hashFiles('**/pom.xml') }}-${{ steps.date.outputs.today }}
           restore-keys: |
             maven-
 
-      - name: Download dependencies
-        run: |
-          # mvn clean
-          # mvn -B dependency:go-offline -U
-          mvn -B -DskipTests clean package
+      - name: Download
+        run: mvn -B -DskipTests clean package
 
   test:
     needs: prepare
@@ -95,7 +86,7 @@ jobs:
             <mirrors>
               <mirror>
                 <id>central-mirror</id>
-                <n>Maven Central Mirror</n>
+                <name>Maven Central Mirror</name>
                 <url>https://repo1.maven.org/maven2</url>
                 <mirrorOf>*</mirrorOf>
               </mirror>
@@ -104,16 +95,16 @@ jobs:
           EOF
 
       - name: Restore Maven cache
+        if: ${{ github.event.inputs.use-cache == 'true' }}
         uses: actions/cache@v4
         with:
           path: ~/.m2/repository
-          key: maven-${{ hashFiles('**/pom.xml') }}
+          key: maven-${{ hashFiles('**/pom.xml') }}-${{ needs.prepare.outputs.cache-key }}
           restore-keys: |
             maven-
 
       - name: Run tests
-        run: |
-          mvn test
+        run: mvn test
 
       - name: Publish Test Report
         uses: dorny/test-reporter@v1
@@ -131,9 +122,9 @@ jobs:
           name: test-results
           path: target/surefire-reports/
           retention-days: 30
-      
+
   build:
-    needs: test
+    needs: [prepare, test]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -156,7 +147,7 @@ jobs:
             <mirrors>
               <mirror>
                 <id>central-mirror</id>
-                <n>Maven Central Mirror</n>
+                <name>Maven Central Mirror</name>
                 <url>https://repo1.maven.org/maven2</url>
                 <mirrorOf>*</mirrorOf>
               </mirror>
@@ -165,25 +156,16 @@ jobs:
           EOF
 
       - name: Restore Maven cache
+        if: ${{ github.event.inputs.use-cache == 'true' }}
         uses: actions/cache@v4
         with:
           path: ~/.m2/repository
-          key: maven-${{ hashFiles('**/pom.xml') }}
+          key: maven-${{ hashFiles('**/pom.xml') }}-${{ needs.prepare.outputs.cache-key }}
           restore-keys: |
             maven-
 
-      # - name: Build and install JAR
-      #   run: |
-      #     mvn jar:jar install:install help:evaluate -Dexpression=project.name
-
-      #     NAME="mvn -q -DforceStdout help:evaluate -Dexpression=project.name"
-      #     VERSION="mvn -q -DforceStdout help:evaluate -Dexpression=project.version"
-
-      #     java -jar target/${NAME}-${VERSION}.jar
-
       - name: Build and install JAR
-        run: |
-          mvn -B clean package install
+        run: mvn -B clean package install
 
       - name: Get project metadata
         id: metadata
@@ -200,7 +182,6 @@ jobs:
       - name: Run application
         run: |
           JAR_FILE="${{ steps.metadata.outputs.jar_file }}"
-          
           if [ -f "$JAR_FILE" ]; then
             echo "Running: $JAR_FILE"
             java -jar "$JAR_FILE"
@@ -222,12 +203,9 @@ jobs:
         if: always()
         run: |
           echo "## Build Summary" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
           echo "- **Project Name:** ${{ steps.metadata.outputs.name }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Version:** ${{ steps.metadata.outputs.version }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Artifact:** ${{ steps.metadata.outputs.jar_file }}" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### JAR Details" >> $GITHUB_STEP_SUMMARY
           if [ -f "${{ steps.metadata.outputs.jar_file }}" ]; then
             SIZE=$(ls -lh "${{ steps.metadata.outputs.jar_file }}" | awk '{print $5}')
             echo "- Size: $SIZE" >> $GITHUB_STEP_SUMMARY
