@@ -73,9 +73,10 @@ jobs:
       - name: Download dependencies
         run: |
           # mvn clean
-          mvn -B dependency:go-offline -U
+          # mvn -B dependency:go-offline -U
+          mvn -B -DskipTests clean package
 
-  run:
+  test:
     needs: prepare
     runs-on: ubuntu-latest
     steps:
@@ -118,3 +119,26 @@ jobs:
       - name: Run tests
         run: |
           mvn test
+
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+
+      - name:
+        run: |
+          mvn jar:jar install:install help:evaluate -Dexpression=project.name
+
+          NAME="mvn -q -DforceStdout help:evaluate -Dexpression=project.name"
+          VERSION="mvn -q -DforceStdout help:evaluate -Dexpression=project.version"
+
+          java -jar target/${NAME}-${VERSION}.jar
