@@ -9,7 +9,7 @@ on:
       use-cache:
         description: '¿Usar caché de Maven?'
         required: false
-        default: 'true'
+        default: 'false'
 
 jobs:
   prepare:

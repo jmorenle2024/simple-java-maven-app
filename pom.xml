@@ -14,39 +14,53 @@
       <version>6.0.0</version>
       <scope>test</scope>
     </dependency>
-    <!-- Apache Spark Core (muy pesado) -->
+    <!-- Apache Spark (muy pesado) -->
     <dependency>
       <groupId>org.apache.spark</groupId>
       <artifactId>spark-core_2.12</artifactId>
       <version>3.5.0</version>
     </dependency>
 
-    <!-- Spring Boot Starter Web (trae muchas dependencias transitivas) -->
+    <!-- Spring Boot Web (trae muchas dependencias transitivas) -->
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-web</artifactId>
       <version>3.1.4</version>
     </dependency>
 
-    <!-- Hibernate ORM (también con muchas dependencias) -->
+    <!-- Hibernate ORM -->
     <dependency>
       <groupId>org.hibernate.orm</groupId>
       <artifactId>hibernate-core</artifactId>
       <version>6.4.4.Final</version>
     </dependency>
 
-    <!-- Apache Flink (otra librería pesada) -->
+    <!-- Elasticsearch High-Level Client -->
+    <dependency>
+      <groupId>org.elasticsearch.client</groupId>
+      <artifactId>elasticsearch-rest-high-level-client</artifactId>
+      <version>7.17.10</version>
+    </dependency>
+
+    <!-- Apache Flink -->
     <dependency>
       <groupId>org.apache.flink</groupId>
       <artifactId>flink-java</artifactId>
       <version>1.18.0</version>
     </dependency>
 
-    <!-- Elasticsearch Client -->
+    <!-- AWS SDK (muy grande y modular) -->
     <dependency>
-      <groupId>org.elasticsearch.client</groupId>
-      <artifactId>elasticsearch-rest-high-level-client</artifactId>
-      <version>7.17.10</version>
+      <groupId>software.amazon.awssdk</groupId>
+      <artifactId>s3</artifactId>
+      <version>2.20.143</version>
+    </dependency>
+
+    <!-- Google Cloud Client Libraries -->
+    <dependency>
+      <groupId>com.google.cloud</groupId>
+      <artifactId>google-cloud-storage</artifactId>
+      <version>2.30.0</version>
     </dependency>
   </dependencies>
   <properties>
