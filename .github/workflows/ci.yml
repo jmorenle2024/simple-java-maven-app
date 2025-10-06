@@ -21,40 +21,40 @@ jobs:
           distribution: 'temurin'
           java-version: '21'
 
-    #   - name: Create Maven settings.xml
-    #     run: |
-    #       mkdir -p ~/.m2
-    #       cat > ~/.m2/settings.xml <<'EOF'
-    #       <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
-    #                 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    #                 xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 
-    #                                     http://maven.apache.org/xsd/settings-1.0.0.xsd">
-    #         <mirrors>
-    #           <mirror>
-    #             <id>central-mirror</id>
-    #             <name>Maven Central Mirror</name>
-    #             <url>https://repo1.maven.org/maven2</url>
-    #             <mirrorOf>*</mirrorOf>
-    #           </mirror>
-    #         </mirrors>
-    #         <profiles>
-    #           <profile>
-    #             <id>default-profile</id>
-    #             <activation>
-    #               <activeByDefault>true</activeByDefault>
-    #             </activation>
-    #             <repositories>
-    #               <repository>
-    #                 <id>central</id>
-    #                 <url>https://repo1.maven.org/maven2</url>
-    #                 <releases><enabled>true</enabled></releases>
-    #                 <snapshots><enabled>false</enabled></snapshots>
-    #               </repository>
-    #             </repositories>
-    #           </profile>
-    #         </profiles>
-    #       </settings>
-    #       EOF
+      - name: Create Maven settings.xml
+        run: |
+          mkdir -p ~/.m2
+          cat > ~/.m2/settings.xml <<'EOF'
+          <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
+                    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                    xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 
+                                        http://maven.apache.org/xsd/settings-1.0.0.xsd">
+            <mirrors>
+              <mirror>
+                <id>central-mirror</id>
+                <n>Maven Central Mirror</n>
+                <url>https://repo1.maven.org/maven2</url>
+                <mirrorOf>*</mirrorOf>
+              </mirror>
+            </mirrors>
+            <profiles>
+              <profile>
+                <id>default-profile</id>
+                <activation>
+                  <activeByDefault>true</activeByDefault>
+                </activation>
+                <repositories>
+                  <repository>
+                    <id>central</id>
+                    <url>https://repo1.maven.org/maven2</url>
+                    <releases><enabled>true</enabled></releases>
+                    <snapshots><enabled>false</enabled></snapshots>
+                  </repository>
+                </repositories>
+              </profile>
+            </profiles>
+          </settings>
+          EOF
 
       - name: Cache Maven dependencies
         id: cache-deps
@@ -64,11 +64,6 @@ jobs:
           key: maven-${{ hashFiles('**/pom.xml') }}
           restore-keys: |
             maven-
-
-    #   - name: Clean old Spring/Hibernate artifacts
-    #     run: |
-    #       rm -rf ~/.m2/repository/org/springframework
-    #       rm -rf ~/.m2/repository/org/hibernate
 
       - name: Download dependencies
         run: |
@@ -89,24 +84,24 @@ jobs:
           distribution: 'temurin'
           java-version: '21'
 
-    #   - name: Create Maven settings.xml
-    #     run: |
-    #       mkdir -p ~/.m2
-    #       cat > ~/.m2/settings.xml <<'EOF'
-    #       <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
-    #                 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    #                 xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 
-    #                                     http://maven.apache.org/xsd/settings-1.0.0.xsd">
-    #         <mirrors>
-    #           <mirror>
-    #             <id>central-mirror</id>
-    #             <name>Maven Central Mirror</name>
-    #             <url>https://repo1.maven.org/maven2</url>
-    #             <mirrorOf>*</mirrorOf>
-    #           </mirror>
-    #         </mirrors>
-    #       </settings>
-    #       EOF
+      - name: Create Maven settings.xml
+        run: |
+          mkdir -p ~/.m2
+          cat > ~/.m2/settings.xml <<'EOF'
+          <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
+                    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                    xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 
+                                        http://maven.apache.org/xsd/settings-1.0.0.xsd">
+            <mirrors>
+              <mirror>
+                <id>central-mirror</id>
+                <n>Maven Central Mirror</n>
+                <url>https://repo1.maven.org/maven2</url>
+                <mirrorOf>*</mirrorOf>
+              </mirror>
+            </mirrors>
+          </settings>
+          EOF
 
       - name: Restore Maven cache
         uses: actions/cache@v4
@@ -120,6 +115,23 @@ jobs:
         run: |
           mvn test
 
+      - name: Publish Test Report
+        uses: dorny/test-reporter@v1
+        if: always()
+        with:
+          name: Maven Tests
+          path: target/surefire-reports/*.xml
+          reporter: java-junit
+          fail-on-error: true
+
+      - name: Upload Test Results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results
+          path: target/surefire-reports/
+          retention-days: 30
+      
   build:
     needs: test
     runs-on: ubuntu-latest
