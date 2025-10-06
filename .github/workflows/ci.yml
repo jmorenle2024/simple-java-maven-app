@@ -183,7 +183,7 @@ jobs:
 
       - name: Build and install JAR
         run: |
-          mvn -B package jar:jar install:install
+          mvn -B clean package install
 
       - name: Get project metadata
         id: metadata
